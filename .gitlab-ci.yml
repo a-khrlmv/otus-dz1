@@ -1,0 +1,57 @@
+stages:
+  - init
+
+init:
+  stage: init
+  tags:
+    - main
+  script:
+    - echo "=== OS ==="
+    - cat /etc/os-release
+
+    - echo "=== DATE / TIME ==="
+    - date
+    - timedatectl || true
+
+    - echo "=== HOSTNAME ==="
+    - hostname
+    - hostnamectl || true
+
+    - echo "=== KERNEL ==="
+    - uname -a
+
+    - echo "=== NETWORK ==="
+    - ip a
+    - echo "--- routes ---"
+    - ip route
+
+    - echo "=== CPU ==="
+    - lscpu
+
+    - echo "=== MEMORY ==="
+    - free -h
+
+    - echo "=== DISK ==="
+    - df -h
+
+    - echo "=== DOCKER ==="
+    - docker --version || true
+    - docker info || true
+
+    - echo "=== GITLAB RUNNER ==="
+    - gitlab-runner --version || true
+
+    - echo "=== CURRENT USER ==="
+    - whoami
+    - id
+
+    - echo "=== WORKING DIRECTORY ==="
+    - pwd
+
+    - echo "=== ENVIRONMENT ==="
+    - echo "CI_RUNNER_DESCRIPTION=${CI_RUNNER_DESCRIPTION}"
+    - echo "CI_RUNNER_TAGS=${CI_RUNNER_TAGS}"
+    - echo "CI_RUNNER_EXECUTABLE_ARCH=${CI_RUNNER_EXECUTABLE_ARCH}"
+    - echo "CI_RUNNER_VERSION=${CI_RUNNER_VERSION}"
+    - echo "CI_PROJECT_PATH=${CI_PROJECT_PATH}"
+    - echo "CI_COMMIT_REF_NAME=${CI_COMMIT_REF_NAME}"
