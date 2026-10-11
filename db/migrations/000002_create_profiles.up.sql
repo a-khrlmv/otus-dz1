@@ -4,10 +4,11 @@ CREATE TABLE public.profiles (
         REFERENCES public.auth(user_id)
         ON DELETE CASCADE,
 
-    first_name VARCHAR(100),
-    last_name VARCHAR(100),
+    first_name VARCHAR(64),
+    last_name VARCHAR(64),
     birth_date DATE,
-    gender VARCHAR(30),
+    gender VARCHAR(20) NOT NULL DEFAULT 'unspecified'
+        CHECK (gender IN ('male', 'female', 'unspecified')),
     interests TEXT,
     city VARCHAR(150)
 );
