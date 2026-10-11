@@ -1,0 +1,57 @@
+
+services:
+  postgres:
+    image: postgres:18-alpine3.24
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: ${DB_ADMIN_USER:?required}
+      POSTGRES_PASSWORD: ${DB_ADMIN_PASSWORD:?required}
+      POSTGRES_DB: ${DB_NAME:?required}
+
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -h 127.0.0.1 -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    ports:
+      - "5432:5432"
+    networks:
+      - app-backend
+
+  db-init:
+    build:
+      context: .
+      dockerfile: db/init/Dockerfile
+
+    restart: "no"
+
+    env_file:
+      - ./config/db-app.env
+
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME:?required}
+      DB_ADMIN_USER: ${DB_ADMIN_USER:?required}
+      DB_ADMIN_PASSWORD: ${DB_ADMIN_PASSWORD:?required}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    networks:
+      - app-backend
+
+volumes:
+  postgres_data:
+
+networks:
+  app-backend:
+    driver: bridge

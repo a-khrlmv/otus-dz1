@@ -1,0 +1,6 @@
+
+CREATE TABLE public.auth (
+    user_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    login VARCHAR(255) UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL
+);
