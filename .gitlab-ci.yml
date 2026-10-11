@@ -4,7 +4,7 @@ stages:
 init:
   stage: init
   tags:
-    - main
+    - host-runner
   script:
     - echo "=== OS ==="
     - cat /etc/os-release
