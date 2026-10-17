@@ -74,8 +74,19 @@ func (h *AuthHandler) Login(
 	decoder.DisallowUnknownFields()
 
 	if err := decoder.Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest,
-			"invalid JSON request")
+		h.logger.Warn(
+			"failed to decode login request",
+			"error", err,
+			"method", r.Method,
+			"path", r.URL.Path,
+			"remote_addr", r.RemoteAddr,
+		)
+
+		writeJSONError(
+			w,
+			http.StatusBadRequest,
+			"invalid JSON request",
+		)
 		return
 	}
 

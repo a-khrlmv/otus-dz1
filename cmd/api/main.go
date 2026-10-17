@@ -13,6 +13,7 @@ import (
 
 	"github.com/a-khrlmv/otus-dz1/internal/config"
 	"github.com/a-khrlmv/otus-dz1/internal/handler"
+	"github.com/a-khrlmv/otus-dz1/internal/middleware"
 	"github.com/a-khrlmv/otus-dz1/internal/repository"
 	"github.com/a-khrlmv/otus-dz1/internal/service"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -112,7 +113,7 @@ func run(logger *slog.Logger) error {
 	// 7. Создание HTTP-сервера
 	server := &http.Server{
 		Addr:              ":" + cfg.HTTPPort,
-		Handler:           mux,
+		Handler:           middleware.Logging(logger, mux),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,
