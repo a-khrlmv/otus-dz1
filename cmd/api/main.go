@@ -73,12 +73,18 @@ func run(logger *slog.Logger) error {
 	// 1. Создаём Repository и передаём ему пул БД.
 	authRepo := repository.NewAuthRepository(db)
 
+	// Repository для регистрации пользователей.
+	userRepo := repository.NewUserRepository(db)
+
 	// 2. Создаём Service.
 	// Передаём Repository и JWT-секрет.
 	authService := service.NewAuthService(
 		authRepo,
 		cfg.JWTSecret,
 	)
+
+	// Service содержит логику регистрации.
+	userService := service.NewUserService(userRepo)
 
 	// 3. Создаём HTTP Handler.
 	// Передаём Service и логгер.
@@ -87,28 +93,19 @@ func run(logger *slog.Logger) error {
 		logger,
 	)
 
+	// Handler обрабатывает HTTP-запросы пользователей.
+	userHandler := handler.NewUserHandler(userService, logger)
+
 	// ==========================================
 	// Регистрация HTTP-маршрутов
 	// ==========================================
 
 	mux := http.NewServeMux()
 
-	// Настоящий обработчик авторизации.
+	// Обработчики
 	mux.HandleFunc("POST /login", authHandler.Login)
-	mux.HandleFunc("POST /user/register",
-		func(w http.ResponseWriter, r *http.Request) {
-			http.Error(w, "Not implemented", http.StatusNotImplemented)
-		},
-	)
-
-	mux.HandleFunc("GET /user/get/{id}",
-		func(w http.ResponseWriter, r *http.Request) {
-			id := r.PathValue("id")
-			logger.Info("get user request", "user_id", id)
-
-			http.Error(w, "Not implemented", http.StatusNotImplemented)
-		},
-	)
+	mux.HandleFunc("POST /user/register", userHandler.Register)
+	mux.HandleFunc("GET /user/get/{id}", userHandler.GetUser)
 
 	// 7. Создание HTTP-сервера
 	server := &http.Server{
