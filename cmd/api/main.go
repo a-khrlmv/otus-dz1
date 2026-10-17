@@ -11,9 +11,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-
 	"github.com/a-khrlmv/otus-dz1/internal/config"
+	"github.com/a-khrlmv/otus-dz1/internal/handler"
+	"github.com/a-khrlmv/otus-dz1/internal/repository"
+	"github.com/a-khrlmv/otus-dz1/internal/service"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func main() {
@@ -63,15 +65,35 @@ func run(logger *slog.Logger) error {
 
 	logger.Info("database connection established")
 
-	// 6. Регистрация HTTP-маршрутов
-	mux := http.NewServeMux()
+	// ==========================================
+	// Инициализация компонентов приложения
+	// ==========================================
 
-	mux.HandleFunc("POST /login",
-		func(w http.ResponseWriter, r *http.Request) {
-			http.Error(w, "Not implemented", http.StatusNotImplemented)
-		},
+	// 1. Создаём Repository и передаём ему пул БД.
+	authRepo := repository.NewAuthRepository(db)
+
+	// 2. Создаём Service.
+	// Передаём Repository и JWT-секрет.
+	authService := service.NewAuthService(
+		authRepo,
+		cfg.JWTSecret,
 	)
 
+	// 3. Создаём HTTP Handler.
+	// Передаём Service и логгер.
+	authHandler := handler.NewAuthHandler(
+		authService,
+		logger,
+	)
+
+	// ==========================================
+	// Регистрация HTTP-маршрутов
+	// ==========================================
+
+	mux := http.NewServeMux()
+
+	// Настоящий обработчик авторизации.
+	mux.HandleFunc("POST /login", authHandler.Login)
 	mux.HandleFunc("POST /user/register",
 		func(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Not implemented", http.StatusNotImplemented)

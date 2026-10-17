@@ -1,3 +1,6 @@
 *.exe
 .env
 config/db-app.env
+*.log
+bin/
+tmp/

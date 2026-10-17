@@ -14,6 +14,7 @@ type Config struct {
 	DBName     string
 	DBUser     string
 	DBPassword string
+	JWTSecret  string // Ключ подписи JWT
 }
 
 // getEnv возвращает значение переменной
@@ -34,6 +35,12 @@ func Load() (Config, error) {
 		DBName:     os.Getenv("DB_NAME"),
 		DBUser:     os.Getenv("APP_DB_USER"),
 		DBPassword: os.Getenv("APP_DB_PASSWORD"),
+		JWTSecret:  os.Getenv("JWT_SECRET"),
+	}
+	if len(cfg.JWTSecret) < 32 {
+		return Config{}, fmt.Errorf(
+			"JWT_SECRET must be at least 32 bytes",
+		)
 	}
 
 	if cfg.DBName == "" ||
