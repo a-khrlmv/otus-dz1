@@ -102,18 +102,10 @@ func run(logger *slog.Logger) error {
 
 	mux := http.NewServeMux()
 
-	// Настоящий обработчик авторизации.
+	// Обработчики
 	mux.HandleFunc("POST /login", authHandler.Login)
 	mux.HandleFunc("POST /user/register", userHandler.Register)
-
-	mux.HandleFunc("GET /user/get/{id}",
-		func(w http.ResponseWriter, r *http.Request) {
-			id := r.PathValue("id")
-			logger.Info("get user request", "user_id", id)
-
-			http.Error(w, "Not implemented", http.StatusNotImplemented)
-		},
-	)
+	mux.HandleFunc("GET /user/get/{id}", userHandler.GetUser)
 
 	// 7. Создание HTTP-сервера
 	server := &http.Server{

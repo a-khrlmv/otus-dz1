@@ -246,3 +246,137 @@ func (h *UserHandler) Register(
 		"user_id", userID,
 	)
 }
+
+//
+// Получение анкеты пользователя
+//
+
+// GetUserResponse описывает JSON-ответ клиенту.
+//
+// Имена полей совпадают с принятой структурой User из OpenAPI.
+//
+// birthdate опускаем, если дата рождения не была указана при регистрации.
+type GetUserResponse struct {
+	ID         string `json:"id"`
+	FirstName  string `json:"first_name"`
+	SecondName string `json:"second_name"`
+	Birthdate  string `json:"birthdate,omitempty"`
+	Biography  string `json:"biography"`
+	City       string `json:"city"`
+}
+
+// GetUser обрабатывает GET /user/get/{id}.
+func (h *UserHandler) GetUser(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	// 1. Получаем ID из параметра URL.
+	//
+	// Например, для GET /user/get/42
+	// r.PathValue("id") вернёт строку "42".
+	idParam := r.PathValue("id")
+
+	// 2. Преобразуем строку в int64.
+	//
+	// Наш PostgreSQL использует BIGINT,
+	// поэтому работаем с int64.
+	userID, err := strconv.ParseInt(idParam, 10, 64)
+
+	if err != nil || userID <= 0 {
+		writeJSONError(
+			w,
+			http.StatusBadRequest,
+			"invalid user id",
+		)
+		return
+	}
+
+	// 3. Создаём контекст с таймаутом.
+	//
+	// Если запрос к БД выполняется слишком долго, контекст позволит прервать ожидание.
+	ctx, cancel := context.WithTimeout(
+		r.Context(),
+		3*time.Second,
+	)
+	defer cancel()
+
+	// 4. Вызываем бизнес-логику.
+	user, err := h.service.GetUser(ctx, userID)
+
+	if err != nil {
+
+		// Пользователь отсутствует.
+		if errors.Is(err, service.ErrUserNotFound) {
+			writeJSONError(
+				w,
+				http.StatusNotFound,
+				"user not found",
+			)
+			return
+		}
+
+		// Время обработки истекло.
+		if errors.Is(err, context.DeadlineExceeded) ||
+			errors.Is(ctx.Err(), context.DeadlineExceeded) {
+
+			h.logger.Warn(
+				"get user timed out",
+				"user_id", userID,
+				"error", err,
+			)
+
+			writeJSONError(
+				w,
+				http.StatusServiceUnavailable,
+				"service temporarily unavailable",
+			)
+			return
+		}
+
+		// Другая ошибка.
+		h.logger.Error(
+			"failed to get user",
+			"user_id", userID,
+			"error", err,
+		)
+
+		writeJSONError(
+			w,
+			http.StatusInternalServerError,
+			"internal server error",
+		)
+		return
+	}
+
+	// 5. Подготавливаем JSON-ответ.
+	//
+	// Числовой ID из PostgreSQL переводим в строку согласно OpenAPI-контракту.
+	response := GetUserResponse{
+		ID:         strconv.FormatInt(user.ID, 10),
+		FirstName:  user.FirstName,
+		SecondName: user.LastName,
+		Biography:  user.Biography,
+		City:       user.City,
+	}
+
+	// 6. Если дата рождения задана, она преобразуется в формат YYYY-MM-DD.
+	if user.BirthDate != nil {
+		response.Birthdate = user.BirthDate.Format(
+			time.DateOnly,
+		)
+	}
+
+	// 7. Возвращаем HTTP 200 с JSON.
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		h.logger.Error(
+			"failed to encode user response",
+			"user_id", userID,
+			"error", err,
+		)
+		return
+	}
+}

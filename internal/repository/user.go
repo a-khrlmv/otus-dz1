@@ -2,10 +2,12 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -134,4 +136,99 @@ func (repo *UserRepository) CreateUser(
 	}
 
 	return userID, nil
+}
+
+//
+// Получение анкеты пользователя
+//
+
+// ErrProfileNotFound — специальная ошибка,
+// означающая, что анкета отсутствует в БД.
+var ErrProfileNotFound = errors.New("user profile not found")
+
+// UserProfile — данные анкеты, полученные из БД.
+//
+// Здесь мы не храним пароль, bcrypt-хеш
+// или технический login — они не нужны
+// при просмотре анкеты пользователя.
+type UserProfile struct {
+	ID        int64
+	FirstName string
+	LastName  string
+	BirthDate *time.Time
+	Biography string
+	City      string
+}
+
+// GetUserByID получает анкету по user_id.
+func (repo *UserRepository) GetUserByID(
+	ctx context.Context,
+	userID int64,
+) (UserProfile, error) {
+
+	// Подготавливаем SQL-запрос.
+	//
+	// $1 — параметр для безопасной передачи userID.
+	// Не вставляем ID в SQL через конкатенацию строк.
+	const query = `
+        SELECT
+            a.user_id,
+            COALESCE(p.first_name, ''),
+            COALESCE(p.last_name, ''),
+            p.birth_date,
+            COALESCE(p.interests, ''),
+            COALESCE(p.city, '')
+        FROM public.auth AS a
+        INNER JOIN public.profiles AS p
+            ON p.user_id = a.user_id
+        WHERE a.user_id = $1
+    `
+
+	var profile UserProfile
+
+	// pgtype.Date позволяет корректно обработать
+	// значение DATE, в том числе NULL.
+	var dbBirthDate pgtype.Date
+
+	// QueryRow используется, поскольку мы ожидаем
+	// не более одной строки по первичному ключу.
+	err := repo.db.QueryRow(
+		ctx,
+		query,
+		userID,
+	).Scan(
+		&profile.ID,
+		&profile.FirstName,
+		&profile.LastName,
+		&dbBirthDate,
+		&profile.Biography,
+		&profile.City,
+	)
+
+	if err != nil {
+		// pgx.ErrNoRows означает, что SELECT
+		// не вернул ни одной строки.
+		if errors.Is(err, pgx.ErrNoRows) {
+			return UserProfile{}, ErrProfileNotFound
+		}
+
+		// Любые другие ошибки передаём выше,
+		// добавляя контекст происходящего.
+		return UserProfile{}, fmt.Errorf(
+			"select user profile by id %d: %w",
+			userID,
+			err,
+		)
+	}
+
+	// Преобразуем дату из формата pgx
+	// в обычный Go-тип *time.Time.
+	//
+	// При NULL поле останется nil.
+	if dbBirthDate.Valid {
+		birthDate := dbBirthDate.Time
+		profile.BirthDate = &birthDate
+	}
+
+	return profile, nil
 }

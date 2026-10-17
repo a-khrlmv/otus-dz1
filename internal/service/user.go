@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"time"
 
@@ -105,4 +106,66 @@ func generateInternalLogin() (string, error) {
 	}
 
 	return "user_" + hex.EncodeToString(randomBytes), nil
+}
+
+//
+// Получение анкеты пользователя
+//
+
+// ErrUserNotFound — ошибка бизнес-уровня.
+var ErrUserNotFound = errors.New("user not found")
+
+// User — модель пользователя для бизнес-логики.
+type User struct {
+	ID        int64
+	FirstName string
+	LastName  string
+	BirthDate *time.Time
+	Biography string
+	City      string
+}
+
+// GetUser получает анкету пользователя по ID.
+func (s *UserService) GetUser(
+	ctx context.Context,
+	userID int64,
+) (User, error) {
+
+	// Дополнительная проверка на уровне Service.
+	//
+	// Отрицательные и нулевые ID не допускаются.
+	if userID <= 0 {
+		return User{}, fmt.Errorf(
+			"invalid user id: %d",
+			userID,
+		)
+	}
+
+	// Запрашиваем данные из Repository.
+	profile, err := s.repo.GetUserByID(ctx, userID)
+
+	if err != nil {
+		// Преобразуем ошибку Repository в ошибку бизнес-уровня.
+		if errors.Is(err, repository.ErrProfileNotFound) {
+			return User{}, ErrUserNotFound
+		}
+
+		// Остальные ошибки передаём выше.
+		return User{}, fmt.Errorf(
+			"get user from repository: %w",
+			err,
+		)
+	}
+
+	// Преобразуем данные Repository в модель бизнес-уровня.
+	user := User{
+		ID:        profile.ID,
+		FirstName: profile.FirstName,
+		LastName:  profile.LastName,
+		BirthDate: profile.BirthDate,
+		Biography: profile.Biography,
+		City:      profile.City,
+	}
+
+	return user, nil
 }
