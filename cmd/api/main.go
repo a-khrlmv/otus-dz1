@@ -73,6 +73,9 @@ func run(logger *slog.Logger) error {
 	// 1. Создаём Repository и передаём ему пул БД.
 	authRepo := repository.NewAuthRepository(db)
 
+	// Repository для регистрации пользователей.
+	userRepo := repository.NewUserRepository(db)
+
 	// 2. Создаём Service.
 	// Передаём Repository и JWT-секрет.
 	authService := service.NewAuthService(
@@ -80,12 +83,18 @@ func run(logger *slog.Logger) error {
 		cfg.JWTSecret,
 	)
 
+	// Service содержит логику регистрации.
+	userService := service.NewUserService(userRepo)
+
 	// 3. Создаём HTTP Handler.
 	// Передаём Service и логгер.
 	authHandler := handler.NewAuthHandler(
 		authService,
 		logger,
 	)
+
+	// Handler обрабатывает HTTP-запросы пользователей.
+	userHandler := handler.NewUserHandler(userService, logger)
 
 	// ==========================================
 	// Регистрация HTTP-маршрутов
@@ -95,11 +104,7 @@ func run(logger *slog.Logger) error {
 
 	// Настоящий обработчик авторизации.
 	mux.HandleFunc("POST /login", authHandler.Login)
-	mux.HandleFunc("POST /user/register",
-		func(w http.ResponseWriter, r *http.Request) {
-			http.Error(w, "Not implemented", http.StatusNotImplemented)
-		},
-	)
+	mux.HandleFunc("POST /user/register", userHandler.Register)
 
 	mux.HandleFunc("GET /user/get/{id}",
 		func(w http.ResponseWriter, r *http.Request) {
