@@ -48,6 +48,37 @@ services:
     networks:
       - app-backend
 
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    image: social-api:1.0.0
+
+    restart: unless-stopped
+
+    env_file:
+      - ./config/db-app.env
+
+    environment:
+      HTTP_PORT: "8080"
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME:?required}
+      JWT_SECRET: ${JWT_SECRET:?required}
+
+    ports:
+      - "127.0.0.1:8080:8080"
+
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+
+    networks:
+      - app-backend
+
+    stop_grace_period: 15s
+
 volumes:
   postgres_data:
 

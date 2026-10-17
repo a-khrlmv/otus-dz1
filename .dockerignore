@@ -1,0 +1,14 @@
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+
+config/*.env
+db/
+docs/
+
+*.log
+*.md
+bin/
+tmp/
