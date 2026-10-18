@@ -33,6 +33,7 @@ services:
       context: .
       dockerfile: db/init/Dockerfile
 
+    image: db-init:0.0.1
     restart: "no"
 
     env_file:
@@ -57,7 +58,7 @@ services:
       context: .
       dockerfile: Dockerfile
 
-    image: social-api:1.0.4
+    image: social-network-api:1.0.4
     restart: unless-stopped
 
     # Ограничения ресурсов
