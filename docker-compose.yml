@@ -3,6 +3,10 @@ services:
     image: postgres:18-alpine3.24
     restart: unless-stopped
 
+    # Ограничения ресурсов
+    cpus: "1.0"
+    mem_limit: 2g
+
     environment:
       POSTGRES_USER: ${DB_ADMIN_USER:?required}
       POSTGRES_PASSWORD: ${DB_ADMIN_PASSWORD:?required}
@@ -29,6 +33,7 @@ services:
       context: .
       dockerfile: db/init/Dockerfile
 
+    image: db-init:0.0.1
     restart: "no"
 
     env_file:
@@ -53,9 +58,12 @@ services:
       context: .
       dockerfile: Dockerfile
 
-    image: social-api:1.0.4
-
+    image: social-network-api:1.0.4
     restart: unless-stopped
+
+    # Ограничения ресурсов
+    cpus: "1.0"
+    mem_limit: 2g
 
     env_file:
       - ./config/db-app.env
